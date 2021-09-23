@@ -7,7 +7,7 @@ import time
 import numpy as np
 from PIL import Image
 
-from yolo import YOLO
+from model.yolo import YOLO
 
 if __name__ == "__main__":
     yolo = YOLO()
