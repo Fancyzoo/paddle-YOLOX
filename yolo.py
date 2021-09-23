@@ -14,7 +14,7 @@ class YOLO(object):
     _defaults = {
         #模型文件和分类文件
         "model_path" : "weights/yolox_x.pdparams",
-        "classes_path" : "model/voc_classes.txt",
+        "classes_path" : "datasets/voc_classes.txt",
 
         #shape大小
         "input_shape" : [640, 640],
