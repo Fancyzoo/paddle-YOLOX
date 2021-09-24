@@ -55,6 +55,8 @@ if __name__ == "__main__":
 
     #创建yolo模型
     model = YoloBody(num_classes, phi)
+    model_train = YoloBody(num_classes, phi)
+
     weights_init(model)
 
     #读取yolo网络
@@ -66,7 +68,7 @@ if __name__ == "__main__":
     model_dict.update(pretrained_dict)
     model.set_state_dict(model_dict)
 
-    model.train()
+    model_train.train()
     # model_train = model.train()
     # if Cuda:
     #     model_train = paddle.DataParallel(model)
@@ -116,7 +118,7 @@ if __name__ == "__main__":
             param.requires_grad = True
 
     for epoch in range(start_epoch, end_epoch):
-        fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch,
+        fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
                       epoch_step, epoch_step_val, gen, gen_val, end_epoch, Cuda)
         lr_scheduler.step()
 
