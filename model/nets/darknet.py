@@ -34,7 +34,7 @@ class BaseConv(nn.Layer):
     def __init__(self, in_channels, out_channels, ksize, stride, groups=1, bias=False, act="silu"):
         super().__init__()
         pad         = (ksize - 1) // 2
-        self.conv   = nn.Conv2D(in_channels, out_channels, kernel_size=ksize, stride=stride, padding=pad, groups=groups, bias=bias)
+        self.conv   = nn.Conv2D(in_channels, out_channels, kernel_size=ksize, stride=stride, padding=pad, groups=groups, bias_attr=bias)
         self.bn     = nn.BatchNorm2D(out_channels)
         self.act    = get_activation(act, inplace=True)
 
@@ -59,7 +59,7 @@ class SPPBottleneck(nn.Layer):
         super().__init__()
         hidden_channels = in_channels // 2
         self.conv1      = BaseConv(in_channels, hidden_channels, 1, stride=1, act=activation)
-        self.m          = nn.LayerList([nn.MaxPool2d(kernel_size=ks, stride=1, padding=ks // 2) for ks in kernel_sizes])
+        self.m          = nn.LayerList([nn.MaxPool2D(kernel_size=ks, stride=1, padding=ks // 2) for ks in kernel_sizes])
         conv2_channels  = hidden_channels * (len(kernel_sizes) + 1)
         self.conv2      = BaseConv(conv2_channels, out_channels, 1, stride=1, act=activation)
 
