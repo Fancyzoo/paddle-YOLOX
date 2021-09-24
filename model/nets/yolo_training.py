@@ -90,13 +90,17 @@ class YOLOLoss(nn.Layer):
         hsize, wsize = output.shape[-2:]
         if grid.shape[2:4] != output.shape[2:4]:
             yv, xv = paddle.meshgrid([paddle.arange(hsize), paddle.arange(wsize)])
-            grid = paddle.stack((xv, yv), 2).view(1, hsize, wsize, 2).type(output.type())
+            # grid = paddle.stack((xv, yv), 2).view(1, hsize, wsize, 2).type(output.type())
+            # .astype(output.type())
+            grid = paddle.reshape(paddle.stack((xv, yv), 2), [1, hsize, wsize, 2])
             self.grids[k] = grid
-        grid = grid.view(1, -1, 2)
+        # grid = grid.view(1, -1, 2)
+        grid = paddle.reshape(grid, [1, -1, 2])
 
-        output = output.flatten(start_dim=2).permute(0, 2, 1)
-        output[..., :2] = (output[..., :2] + grid) * stride
-        output[..., 2:4] = paddle.exp(output[..., 2:4]) * stride
+        # output = output.flatten(start_axis=2).permute(0, 2, 1)
+        output = paddle.transpose(output.flatten(start_axis=2),perm=[0, 2, 1])
+        output[:, :, :2] = (output[:, :, :2] + grid) * stride
+        output[:, :, 2:4] = paddle.exp(output[:, :, 2:4]) * stride
         return output, grid
 
     def get_losses(self, x_shifts, y_shifts, expanded_strides, labels, outputs):
@@ -144,8 +148,8 @@ class YOLOLoss(nn.Layer):
                 #   cls_preds_per_image     [n_anchors_all, num_classes]
                 #   obj_preds_per_image     [n_anchors_all, 1]
                 # -----------------------------------------------#
-                gt_bboxes_per_image = labels[batch_idx][..., :4]
-                gt_classes = labels[batch_idx][..., 4]
+                gt_bboxes_per_image = labels[batch_idx][:, :4]
+                gt_classes = labels[batch_idx][:, 4]
                 bboxes_preds_per_image = bbox_preds[batch_idx]
                 cls_preds_per_image = cls_preds[batch_idx]
                 obj_preds_per_image = obj_preds[batch_idx]
@@ -261,20 +265,21 @@ class YOLOLoss(nn.Layer):
         #   x_centers_per_image         [num_gt, n_anchors_all]
         # -------------------------------------------------------#
         expanded_strides_per_image = expanded_strides[0]
-        x_centers_per_image = ((x_shifts[0] + 0.5) * expanded_strides_per_image).unsqueeze(0).repeat(num_gt, 1)
-        y_centers_per_image = ((y_shifts[0] + 0.5) * expanded_strides_per_image).unsqueeze(0).repeat(num_gt, 1)
+        x_centers_per_image = paddle.tile(((x_shifts[0] + 0.5) * expanded_strides_per_image).unsqueeze(0), [num_gt, 1])
+        y_centers_per_image = paddle.tile(((y_shifts[0] + 0.5) * expanded_strides_per_image).unsqueeze(0), [num_gt, 1])
 
         # -------------------------------------------------------#
         #   gt_bboxes_per_image_x       [num_gt, n_anchors_all]
         # -------------------------------------------------------#
-        gt_bboxes_per_image_l = (gt_bboxes_per_image[:, 0] - 0.5 * gt_bboxes_per_image[:, 2]).unsqueeze(1).repeat(1,
-                                                                                                                  total_num_anchors)
-        gt_bboxes_per_image_r = (gt_bboxes_per_image[:, 0] + 0.5 * gt_bboxes_per_image[:, 2]).unsqueeze(1).repeat(1,
-                                                                                                                  total_num_anchors)
-        gt_bboxes_per_image_t = (gt_bboxes_per_image[:, 1] - 0.5 * gt_bboxes_per_image[:, 3]).unsqueeze(1).repeat(1,
-                                                                                                                  total_num_anchors)
-        gt_bboxes_per_image_b = (gt_bboxes_per_image[:, 1] + 0.5 * gt_bboxes_per_image[:, 3]).unsqueeze(1).repeat(1,
-                                                                                                                  total_num_anchors)
+
+        gt_bboxes_per_image_l = paddle.tile((gt_bboxes_per_image[:, 0] - 0.5 * gt_bboxes_per_image[:, 2]).unsqueeze(1),
+                                            [1, total_num_anchors])
+        gt_bboxes_per_image_r = paddle.tile((gt_bboxes_per_image[:, 0] + 0.5 * gt_bboxes_per_image[:, 2]).unsqueeze(1),
+                                            [1, total_num_anchors])
+        gt_bboxes_per_image_t = paddle.tile((gt_bboxes_per_image[:, 1] - 0.5 * gt_bboxes_per_image[:, 3]).unsqueeze(1),
+                                            [1, total_num_anchors])
+        gt_bboxes_per_image_b = paddle.tile((gt_bboxes_per_image[:, 1] + 0.5 * gt_bboxes_per_image[:, 3]).unsqueeze(1),
+                                            [1, total_num_anchors])
 
         # -------------------------------------------------------#
         #   bbox_deltas     [num_gt, n_anchors_all, 4]
@@ -292,18 +297,14 @@ class YOLOLoss(nn.Layer):
         is_in_boxes = bbox_deltas.min(axis=-1).values > 0.0
         is_in_boxes_all = is_in_boxes.sum(axis=0) > 0
 
-        gt_bboxes_per_image_l = (gt_bboxes_per_image[:, 0]).unsqueeze(1).repeat(1,
-                                                                                total_num_anchors) - center_radius * expanded_strides_per_image.unsqueeze(
-            0)
-        gt_bboxes_per_image_r = (gt_bboxes_per_image[:, 0]).unsqueeze(1).repeat(1,
-                                                                                total_num_anchors) + center_radius * expanded_strides_per_image.unsqueeze(
-            0)
-        gt_bboxes_per_image_t = (gt_bboxes_per_image[:, 1]).unsqueeze(1).repeat(1,
-                                                                                total_num_anchors) - center_radius * expanded_strides_per_image.unsqueeze(
-            0)
-        gt_bboxes_per_image_b = (gt_bboxes_per_image[:, 1]).unsqueeze(1).repeat(1,
-                                                                                total_num_anchors) + center_radius * expanded_strides_per_image.unsqueeze(
-            0)
+        gt_bboxes_per_image_l = paddle.tile((gt_bboxes_per_image[:, 0]).unsqueeze(1),
+                                            [1, total_num_anchors]) - center_radius * expanded_strides_per_image.unsqueeze(0)
+        gt_bboxes_per_image_r = paddle.tile((gt_bboxes_per_image[:, 0]).unsqueeze(1),
+                                            [1, total_num_anchors]) + center_radius * expanded_strides_per_image.unsqueeze(0)
+        gt_bboxes_per_image_t = paddle.tile((gt_bboxes_per_image[:, 1]).unsqueeze(1),
+                                            [1, total_num_anchors]) - center_radius * expanded_strides_per_image.unsqueeze(0)
+        gt_bboxes_per_image_b = paddle.tile((gt_bboxes_per_image[:, 1]).unsqueeze(1),
+                                            [1, total_num_anchors]) + center_radius * expanded_strides_per_image.unsqueeze(0)
 
         # -------------------------------------------------------#
         #   center_deltas   [num_gt, n_anchors_all, 4]
