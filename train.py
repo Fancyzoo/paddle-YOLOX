@@ -13,7 +13,7 @@ from utils.utils_fit import fit_one_epoch
 
 if __name__ == "__main__":
     #是否使用GPU
-    Cuda = True
+    Cuda = False
 
     #分类文件和模型文件
     classes_path = 'datasets/voc_classes.txt'
@@ -64,12 +64,13 @@ if __name__ == "__main__":
     pretrained_dict = paddle.load(model_path)
     pretrained_dict = {k: v for k, v in pretrained_dict.items() if np.shape(model_dict[k]) == np.shape(v)}
     model_dict.update(pretrained_dict)
-    model.load_state_dict(model_dict)
+    model.set_state_dict(model_dict)
 
-    model_train = model.train()
-    if Cuda:
-        model_train = paddle.DataParallel(model)
-        model.train()
+    model.train()
+    # model_train = model.train()
+    # if Cuda:
+    #     model_train = paddle.DataParallel(model)
+    #     model.train()
 
     yolo_loss = YOLOLoss(num_classes)
     loss_history = LossHistory("logs/")
@@ -88,7 +89,7 @@ if __name__ == "__main__":
         start_epoch = Init_Epoch
         end_epoch = Freeze_Epoch
 
-        optimizer = optim.Adam(learning_rate=lr, weight_decay=5e-4, parameters=model_train.parameters())
+        optimizer = optim.Adam(learning_rate=lr, weight_decay=5e-4, parameters=model.parameters())
         if Cosine_scheduler:
             lr_scheduler = optim.lr.CosineAnnealingDecay(learning_rate=lr, T_max=5, eta_min=1e-5)
         else:
@@ -115,7 +116,7 @@ if __name__ == "__main__":
             param.requires_grad = True
 
     for epoch in range(start_epoch, end_epoch):
-        fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
+        fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch,
                       epoch_step, epoch_step_val, gen, gen_val, end_epoch, Cuda)
         lr_scheduler.step()
 
@@ -125,7 +126,7 @@ if __name__ == "__main__":
         start_epoch = Freeze_Epoch
         end_epoch   = UnFreeze_Epoch
 
-        optimizer = optim.Adam(learning_rate=lr, weight_decay=5e-4, parameters=model_train.parameters())
+        optimizer = optim.Adam(learning_rate=lr, weight_decay=5e-4, parameters=model.parameters())
         if Cosine_scheduler:
             lr_scheduler = optim.lr.CosineAnnealingDecay(learning_rate=lr, T_max=5, eta_min=1e-5)
         else:
@@ -149,6 +150,6 @@ if __name__ == "__main__":
                 param.requires_grad = True
 
         for epoch in range(start_epoch, end_epoch):
-            fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
+            fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch,
                           epoch_step, epoch_step_val, gen, gen_val, end_epoch, Cuda)
             lr_scheduler.step()
