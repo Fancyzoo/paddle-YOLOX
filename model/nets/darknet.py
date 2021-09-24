@@ -23,11 +23,12 @@ class Focus(nn.Layer):
         self.conv = BaseConv(in_channels * 4, out_channels, ksize, stride, act=act)
 
     def forward(self, x):
-        patch_top_left  = x[...,  ::2,  ::2]
-        patch_bot_left  = x[..., 1::2,  ::2]
-        patch_top_right = x[...,  ::2, 1::2]
-        patch_bot_right = x[..., 1::2, 1::2]
-        x = paddle.concat((patch_top_left, patch_bot_left, patch_top_right, patch_bot_right,), dim=1,)
+        patch_top_left  = x[:,  ::2,  ::2]
+        patch_bot_left  = x[:, 1::2,  ::2]
+        patch_top_right = x[:,  ::2, 1::2]
+        patch_bot_right = x[:, 1::2, 1::2]
+        x = paddle.concat((patch_top_left, patch_bot_left, patch_top_right, patch_bot_right,), axis=1)
+        print(x.shape)
         return self.conv(x)
 
 class BaseConv(nn.Layer):
