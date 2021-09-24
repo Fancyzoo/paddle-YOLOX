@@ -4,12 +4,12 @@ from tqdm import tqdm
 from utils.utils import get_lr
 
 
-def fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen,
+def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen,
                   gen_val, Epoch, cuda):
     loss = 0
     val_loss = 0
 
-    model.train()
+    model_train.train()
     print('Start Train')
     with tqdm(total=epoch_step, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen):
@@ -33,7 +33,7 @@ def fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch, epoch_step, 
             # ----------------------#
             #   前向传播
             # ----------------------#
-            outputs = model(images)
+            outputs = model_train(images)
 
             # ----------------------#
             #   计算损失
@@ -54,7 +54,7 @@ def fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch, epoch_step, 
 
     print('Finish Train')
 
-    model.eval()
+    model_train.eval()
     print('Start Validation')
     with tqdm(total=epoch_step_val, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen_val):
@@ -75,7 +75,7 @@ def fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch, epoch_step, 
                 # ----------------------#
                 #   前向传播
                 # ----------------------#
-                outputs = model(images)
+                outputs = model_train(images)
 
                 # ----------------------#
                 #   计算损失
