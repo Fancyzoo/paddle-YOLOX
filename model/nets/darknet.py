@@ -23,12 +23,11 @@ class Focus(nn.Layer):
         self.conv = BaseConv(in_channels * 4, out_channels, ksize, stride, act=act)
 
     def forward(self, x):
-        patch_top_left  = x[:,  ::2,  ::2]
-        patch_bot_left  = x[:, 1::2,  ::2]
-        patch_top_right = x[:,  ::2, 1::2]
-        patch_bot_right = x[:, 1::2, 1::2]
+        patch_top_left  = x[:, :,  ::2,  ::2]
+        patch_bot_left  = x[:, :, 1::2,  ::2]
+        patch_top_right = x[:, :,  ::2, 1::2]
+        patch_bot_right = x[:, :, 1::2, 1::2]
         x = paddle.concat((patch_top_left, patch_bot_left, patch_top_right, patch_bot_right,), axis=1)
-        print(x.shape)
         return self.conv(x)
 
 class BaseConv(nn.Layer):
@@ -66,7 +65,7 @@ class SPPBottleneck(nn.Layer):
 
     def forward(self, x):
         x = self.conv1(x)
-        x = paddle.concat([x] + [m(x) for m in self.m], dim=1)
+        x = paddle.concat([x] + [m(x) for m in self.m], axis=1)
         x = self.conv2(x)
         return x
 
@@ -103,7 +102,7 @@ class CSPLayer(nn.Layer):
         x_1 = self.conv1(x)
         x_2 = self.conv2(x)
         x_1 = self.m(x_1)
-        x = paddle.concat((x_1, x_2), dim=1)
+        x = paddle.concat((x_1, x_2), axis=1)
         return self.conv3(x)
 
 
