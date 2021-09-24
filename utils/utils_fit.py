@@ -1,16 +1,15 @@
-import torch
 import paddle
 from tqdm import tqdm
 
 from utils.utils import get_lr
 
 
-def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen,
+def fit_one_epoch(model, yolo_loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen,
                   gen_val, Epoch, cuda):
     loss = 0
     val_loss = 0
 
-    model_train.train()
+    model.train()
     print('Start Train')
     with tqdm(total=epoch_step, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen):
@@ -23,16 +22,18 @@ def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
                     images = paddle.to_tensor(images).type(paddle.to_tensor([], dtype='float32')).cuda()
                     targets = [paddle.to_tensor(ann).type(paddle.to_tensor([], dtype='float32')).cuda() for ann in targets]
                 else:
-                    images = paddle.to_tensor(images).type(paddle.to_tensor([], dtype='float32'))
-                    targets = [paddle.to_tensor(ann).type(paddle.to_tensor([], dtype='float32')) for ann in targets]
+                    # images = paddle.to_tensor(images).type(paddle.to_tensor([], dtype='float32'))
+                    # targets = [paddle.to_tensor(ann).type(paddle.to_tensor([], dtype='float32')) for ann in targets]
+                    images = paddle.to_tensor(images).astype(dtype='float32')
+                    targets = [paddle.to_tensor(ann).astype(dtype='float32') for ann in targets]
             # ----------------------#
             #   清零梯度
             # ----------------------#
-            optimizer.zero_grad()
+            optimizer.clear_grad()
             # ----------------------#
             #   前向传播
             # ----------------------#
-            outputs = model_train(images)
+            outputs = model(images)
 
             # ----------------------#
             #   计算损失
@@ -53,7 +54,7 @@ def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
 
     print('Finish Train')
 
-    model_train.eval()
+    model.eval()
     print('Start Validation')
     with tqdm(total=epoch_step_val, desc=f'Epoch {epoch + 1}/{Epoch}', postfix=dict, mininterval=0.3) as pbar:
         for iteration, batch in enumerate(gen_val):
@@ -62,11 +63,11 @@ def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
             images, targets = batch[0], batch[1]
             with paddle.no_grad():
                 if cuda:
-                    images = paddle.to_tensor(images).paddle.to_tensor([], dtype='float32')).cuda()
-                    targets = [paddle.to_tensor(ann).paddle.to_tensor([], dtype='float32')).cuda() for ann in targets]
+                    images = paddle.to_tensor(images).paddle.to_tensor([], dtype='float32').cuda()
+                    targets = [paddle.to_tensor(ann).paddle.to_tensor([], dtype='float32').cuda() for ann in targets]
                 else:
-                    images = paddle.to_tensor(images).paddle.to_tensor([], dtype='float32'))
-                    targets = [paddle.to_tensor(ann).paddle.to_tensor([], dtype='float32')) for ann in targets]
+                    images = paddle.to_tensor(images).astype(dtype='float32')
+                    targets = [paddle.to_tensor(ann).astype(dtype='float32') for ann in targets]
                 # ----------------------#
                 #   清零梯度
                 # ----------------------#
@@ -74,7 +75,7 @@ def fit_one_epoch(model_train, model, yolo_loss, loss_history, optimizer, epoch,
                 # ----------------------#
                 #   前向传播
                 # ----------------------#
-                outputs = model_train(images)
+                outputs = model(images)
 
                 # ----------------------#
                 #   计算损失
