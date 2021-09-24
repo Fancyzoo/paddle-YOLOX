@@ -13,14 +13,14 @@ from utils.utils_bbox import decode_outputs, non_max_suppression
 class YOLO(object):
     _defaults = {
         #模型文件和分类文件
-        "model_path" : "weights/yolox_x.pdparams",
+        "model_path" : "weights/yolox_s.pdparams",
         "classes_path" : "datasets/voc_classes.txt",
 
         #shape大小
         "input_shape" : [640, 640],
 
         #使用的YoloX版本:s、m、l、x
-        "phi" : "x",
+        "phi" : "s",
 
         #置信度
         "confidence" : 0.5,
@@ -32,7 +32,7 @@ class YOLO(object):
         "letterbox_image" : False,
 
         #是否使用Cuda
-        "cuda" : True,
+        "cuda" : False,
     }
 
     @classmethod
