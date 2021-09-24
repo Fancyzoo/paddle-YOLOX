@@ -294,7 +294,8 @@ class YOLOLoss(nn.Layer):
         #   is_in_boxes     [num_gt, n_anchors_all]
         #   is_in_boxes_all [n_anchors_all]
         # -------------------------------------------------------#
-        is_in_boxes = bbox_deltas.min(axis=-1).values > 0.0
+
+        is_in_boxes = bbox_deltas.min(axis=-1) > 0.0
         is_in_boxes_all = is_in_boxes.sum(axis=0) > 0
 
         gt_bboxes_per_image_l = paddle.tile((gt_bboxes_per_image[:, 0]).unsqueeze(1),
@@ -319,7 +320,7 @@ class YOLOLoss(nn.Layer):
         #   is_in_centers       [num_gt, n_anchors_all]
         #   is_in_centers_all   [n_anchors_all]
         # -------------------------------------------------------#
-        is_in_centers = center_deltas.min(axis=-1).values > 0.0
+        is_in_centers = center_deltas.min(axis=-1) > 0.0
         is_in_centers_all = is_in_centers.sum(axis=0) > 0
 
         # -------------------------------------------------------#
