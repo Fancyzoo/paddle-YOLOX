@@ -200,6 +200,7 @@ class YOLOLoss(nn.Layer):
         #   cls_preds_              [fg_mask, num_classes]
         #   obj_preds_              [fg_mask, 1]
         # -------------------------------------------------------#
+        fg_mask = fg_mask.astype("int64")
         bboxes_preds_per_image = bboxes_preds_per_image[fg_mask]
         cls_preds_ = cls_preds_per_image[fg_mask]
         obj_preds_ = obj_preds_per_image[fg_mask]
@@ -233,26 +234,28 @@ class YOLOLoss(nn.Layer):
         return gt_matched_classes, fg_mask, pred_ious_this_matching, matched_gt_inds, num_fg
 
     def bboxes_iou(self, bboxes_a, bboxes_b, xyxy=True):
+        print(bboxes_a.shape, bboxes_b.shape)
         if bboxes_a.shape[1] != 4 or bboxes_b.shape[1] != 4:
             raise IndexError
 
         if xyxy:
             tl = paddle.maximum(bboxes_a[:, None, :2], bboxes_b[:, :2])
-            br = paddle.minimun(bboxes_a[:, None, 2:], bboxes_b[:, 2:])
+            br = paddle.minimum(bboxes_a[:, None, 2:], bboxes_b[:, 2:])
             area_a = paddle.prod(bboxes_a[:, 2:] - bboxes_a[:, :2], 1)
             area_b = paddle.prod(bboxes_b[:, 2:] - bboxes_b[:, :2], 1)
         else:
             tl = paddle.maximum(
-                (bboxes_a[:, None, :2] - bboxes_a[:, None, 2:] / 2),
+                (bboxes_a[:, :2] - bboxes_a[:, 2:] / 2),
                 (bboxes_b[:, :2] - bboxes_b[:, 2:] / 2),
             )
-            br = paddle.minimun(
-                (bboxes_a[:, None, :2] + bboxes_a[:, None, 2:] / 2),
+            br = paddle.minimum(
+                (bboxes_a[:, :2] + bboxes_a[:, 2:] / 2),
                 (bboxes_b[:, :2] + bboxes_b[:, 2:] / 2),
             )
 
             area_a = paddle.prod(bboxes_a[:, 2:], 1)
             area_b = paddle.prod(bboxes_b[:, 2:], 1)
+        print(type(tl<br))
         en = (tl < br).type(tl.type()).prod(axis=2)
         area_i = paddle.prod(br - tl, 2) * en
         return area_i / (area_a[:, None] + area_b - area_i)
@@ -327,21 +330,27 @@ class YOLOLoss(nn.Layer):
         #   is_in_boxes_anchor      [n_anchors_all]
         #   is_in_boxes_and_center  [num_gt, is_in_boxes_anchor]
         # -------------------------------------------------------#
-        # Hedge
-        #is_in_boxes_anchor = is_in_boxes_all.numpy() | is_in_centers_all.numpy()
-        #is_in_boxes_anchor = paddle.to_tensor(is_in_boxes_anchor)
-        #is_in_boxes_numpy = is_in_boxes.numpy()
-        #is_in_centers_numpy = is_in_boxes.numpy()
-        #is_in_boxes_anchor_numpy = is_in_boxes_anchor.numpy()
-        #is_in_boxes_and_center = is_in_boxes_numpy[:, is_in_boxes_anchor_numpy]  & is_in_centers_numpy[:, is_in_boxes_anchor_numpy]
-        #is_in_boxes_and_center = paddle.to_tensor(is_in_boxes_and_center, dtype="bool")
-        is_in_boxes_anchor = is_in_boxes_all | is_in_centers_all
-        is_in_boxes_anchor_t = paddle.tile(is_in_boxes_anchor, [2, 1])
-        is_in_boxes_r = paddle.masked_select(is_in_boxes, is_in_boxes_anchor_t).reshape(
-            [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
-        is_in_centers_r = paddle.masked_select(is_in_centers, is_in_boxes_anchor_t).reshape(
-            [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
-        is_in_boxes_and_center = is_in_boxes_r & is_in_centers_r
+
+        is_in_boxes_anchor = is_in_boxes_all.numpy() | is_in_centers_all.numpy()
+        is_in_boxes_anchor = paddle.to_tensor(is_in_boxes_anchor)
+        # print("----------------------")
+        # Method1
+        is_in_boxes_numpy = is_in_boxes.numpy()
+        is_in_centers_numpy = is_in_boxes.numpy()
+        is_in_boxes_anchor_numpy = is_in_boxes_anchor.numpy()
+        is_in_boxes_and_center = is_in_boxes_numpy[:, is_in_boxes_anchor_numpy]  & is_in_centers_numpy[:, is_in_boxes_anchor_numpy]
+        is_in_boxes_and_center = paddle.to_tensor(is_in_boxes_and_center, dtype="bool")
+        # print(is_in_boxes_and_center_1)
+        
+        # Method2
+        # is_in_boxes_anchor_t = paddle.tile(is_in_boxes_anchor, [2, 1])
+        # is_in_boxes_r = paddle.masked_select(is_in_boxes, is_in_boxes_anchor_t).reshape(
+        #     [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
+        # is_in_centers_r = paddle.masked_select(is_in_centers, is_in_boxes_anchor_t).reshape(
+        #     [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
+        # is_in_boxes_and_center_2 = is_in_boxes_r & is_in_centers_r
+        # print(is_in_boxes_and_center_2)
+        # print(is_in_boxes_and_center_2 == is_in_boxes_and_center_1)
         return is_in_boxes_anchor, is_in_boxes_and_center
 
     def dynamic_k_matching(self, cost, pair_wise_ious, gt_classes, num_gt, fg_mask):
