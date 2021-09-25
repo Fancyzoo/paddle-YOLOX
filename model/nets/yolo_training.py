@@ -327,13 +327,21 @@ class YOLOLoss(nn.Layer):
         #   is_in_boxes_anchor      [n_anchors_all]
         #   is_in_boxes_and_center  [num_gt, is_in_boxes_anchor]
         # -------------------------------------------------------#
-        is_in_boxes_anchor = is_in_boxes_all.numpy() | is_in_centers_all.numpy()
-        is_in_boxes_anchor = paddle.to_tensor(is_in_boxes_anchor)
-        is_in_boxes_numpy = is_in_boxes.numpy()
-        is_in_centers_numpy = is_in_boxes.numpy()
-        is_in_boxes_anchor_numpy = is_in_boxes_anchor.numpy()
-        is_in_boxes_and_center = is_in_boxes_numpy[:, is_in_boxes_anchor_numpy]  & is_in_centers_numpy[:, is_in_boxes_anchor_numpy]
-        is_in_boxes_and_center = paddle.to_tensor(is_in_boxes_and_center, dtype="bool")
+        # Hedge
+        #is_in_boxes_anchor = is_in_boxes_all.numpy() | is_in_centers_all.numpy()
+        #is_in_boxes_anchor = paddle.to_tensor(is_in_boxes_anchor)
+        #is_in_boxes_numpy = is_in_boxes.numpy()
+        #is_in_centers_numpy = is_in_boxes.numpy()
+        #is_in_boxes_anchor_numpy = is_in_boxes_anchor.numpy()
+        #is_in_boxes_and_center = is_in_boxes_numpy[:, is_in_boxes_anchor_numpy]  & is_in_centers_numpy[:, is_in_boxes_anchor_numpy]
+        #is_in_boxes_and_center = paddle.to_tensor(is_in_boxes_and_center, dtype="bool")
+        is_in_boxes_anchor = is_in_boxes_all | is_in_centers_all
+        is_in_boxes_anchor_t = paddle.tile(is_in_boxes_anchor, [2, 1])
+        is_in_boxes_r = paddle.masked_select(is_in_boxes, is_in_boxes_anchor_t).reshape(
+            [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
+        is_in_centers_r = paddle.masked_select(is_in_centers, is_in_boxes_anchor_t).reshape(
+            [int(is_in_boxes_anchor_t.shape[0] / 2), 2])
+        is_in_boxes_and_center = is_in_boxes_r & is_in_centers_r
         return is_in_boxes_anchor, is_in_boxes_and_center
 
     def dynamic_k_matching(self, cost, pair_wise_ious, gt_classes, num_gt, fg_mask):
