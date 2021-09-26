@@ -256,8 +256,8 @@ class YOLOLoss(nn.Layer):
             area_a = paddle.prod(bboxes_a[:, 2:], 1)
             area_b = paddle.prod(bboxes_b[:, 2:], 1)
         print(type(tl<br))
-        en = (tl < br).type(tl.type()).prod(axis=2)
-        area_i = paddle.prod(br - tl, 2) * en
+        en = paddle.prod(paddle.to_tensor((tl < br).astype("int64"), dtype="bool"), axis=2)
+        area_i = paddle.prod(br-tl, 2) * en
         return area_i / (area_a[:, None] + area_b - area_i)
 
     def get_in_boxes_info(self, gt_bboxes_per_image, expanded_strides, x_shifts, y_shifts, total_num_anchors, num_gt,
